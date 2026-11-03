@@ -1,4 +1,4 @@
-﻿# Environment variables
+# Environment variables
 .env
 .env.local
 .env.development.local
@@ -17,7 +17,6 @@ alcontext*
 architecture*
 seed.js
 server/seed.js
-
 
 # Dependencies
 node_modules/
@@ -43,4 +42,3 @@ Thumbs.db
 .vscode/
 .idea/
 *.tsbuildinfo
-
