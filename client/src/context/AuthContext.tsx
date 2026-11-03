@@ -62,21 +62,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(res.user);
     }
   };
-
   const loginWithGoogle = async () => {
-    // Simulated Google OAuth profile
-    const mockGoogleProfile = {
-      name: 'Sarah Connor',
-      email: 'sarah.reader@gmail.com',
-      photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-    };
-    const res = await api.googleLogin(mockGoogleProfile);
-    if (res.token && res.user) {
-      localStorage.setItem('booknook_token', res.token);
-      localStorage.setItem('booknook_user', JSON.stringify(res.user));
-      setUser(res.user);
-    }
+    return new Promise<void>((resolve, reject) => {
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        return reject(new Error('Google Client ID is not configured.'));
+      }
+
+      if (typeof window === 'undefined' || !(window as any).google?.accounts?.oauth2) {
+        return reject(new Error('Google Identity Services script is still loading. Please try again.'));
+      }
+
+      try {
+        const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'email profile openid',
+          callback: async (tokenResponse: any) => {
+            if (tokenResponse?.error) {
+              return reject(new Error(tokenResponse.error));
+            }
+
+            try {
+              // 1. Fetch real user profile from Google using the access token
+              const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+              });
+              const userInfo = await userInfoRes.json();
+
+              if (!userInfo.email) {
+                throw new Error('Google did not return an email address');
+              }
+
+              // 2. Sync profile with our Express backend & get signed JWT
+              const res = await api.googleLogin({
+                name: userInfo.name || 'Google User',
+                email: userInfo.email,
+                photoURL: userInfo.picture || '',
+              });
+
+              if (res.token && res.user) {
+                localStorage.setItem('booknook_token', res.token);
+                localStorage.setItem('booknook_user', JSON.stringify(res.user));
+                setUser(res.user);
+                resolve();
+              } else {
+                throw new Error(res.message || 'Google login failed on backend');
+              }
+            } catch (err) {
+              reject(err);
+            }
+          },
+        });
+
+        tokenClient.requestAccessToken();
+      } catch (err) {
+        reject(err);
+      }
+    });
   };
+
 
   const logout = () => {
     localStorage.removeItem('booknook_token');
