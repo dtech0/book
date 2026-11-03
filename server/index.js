@@ -61,19 +61,39 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Connect to MongoDB and start server
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
+// Connect to MongoDB (handles both local Node and Vercel serverless lifecycle)
+let isConnected = false;
+const connectDB = async () => {
+  if (isConnected || (mongoose.connection && mongoose.connection.readyState >= 1)) {
+    return;
+  }
+  try {
+    if (!MONGODB_URI) {
+      console.warn('MONGODB_URI environment variable is missing.');
+      return;
+    }
+    await mongoose.connect(MONGODB_URI);
+    isConnected = true;
     console.log('Connected to MongoDB successfully.');
+  } catch (err) {
+    console.error('MongoDB connection error:', err.message);
+  }
+};
+
+// Ensure database connection for all requests in serverless environment
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
+
+// Start local server if not running in serverless environment
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`BookNook Express server running on port ${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.warn('MongoDB connection failed on start:', err.message);
-    console.log('Starting HTTP server in fallback mode (database reconnecting in background)...');
-    app.listen(PORT, () => {
-      console.log(`BookNook Express server running on port ${PORT} (waiting for MongoDB)`);
-    });
   });
+}
+
+module.exports = app;
+
