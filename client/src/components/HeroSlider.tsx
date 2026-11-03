@@ -1,14 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
-
-// Import Swiper styles
-import 'swiper/css';
-import 'swiper/css/pagination';
-import 'swiper/css/effect-fade';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SlideData {
   title: string;
@@ -59,95 +53,113 @@ const slides: SlideData[] = [
 ];
 
 export function HeroSlider() {
+  const [current, setCurrent] = useState(0);
+
+  // Auto-play every 6 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const slide = slides[current];
+
   return (
-    <div className="w-full pt-2 pb-6">
-      <Swiper
-        modules={[Autoplay, Pagination, EffectFade]}
-        effect="fade"
-        speed={800}
-        autoplay={{
-          delay: 6000,
-          disableOnInteraction: false,
-        }}
-        pagination={{
-          clickable: true,
-        }}
-        loop={true}
-        className="w-full"
-      >
-        {slides.map((slide, idx) => (
-          <SwiperSlide key={idx}>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-4 sm:py-6">
-              {/* Left Column: Heading, description, CTA, Stats */}
-              <div className="lg:col-span-6 flex flex-col justify-center space-y-6">
-                <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-stone-900 dark:text-stone-100 leading-[1.12] tracking-tight">
-                  {slide.title}
-                </h1>
+    <div className="w-full pt-2 pb-6 relative overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.45, ease: 'easeInOut' }}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-4 sm:py-6"
+        >
+          {/* Left Column: Heading, description, CTA, Stats */}
+          <div className="lg:col-span-6 flex flex-col justify-center space-y-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-stone-900 dark:text-stone-100 leading-[1.12] tracking-tight">
+              {slide.title}
+            </h1>
 
-                <p className="text-sm sm:text-base text-stone-500 dark:text-stone-400 max-w-lg leading-relaxed font-normal">
-                  {slide.description}
+            <p className="text-sm sm:text-base text-stone-500 dark:text-stone-400 max-w-lg leading-relaxed font-normal">
+              {slide.description}
+            </p>
+
+            {/* Buttons */}
+            <div className="flex items-center gap-4 pt-2">
+              <Link
+                href="/books"
+                className="px-6 py-3.5 rounded-xl font-bold text-sm bg-[#c8a88e] hover:bg-[#b89375] text-white shadow-sm transition-all hover:scale-102 active:scale-98"
+              >
+                Start Browsing
+              </Link>
+
+              <a
+                href="#how-it-works"
+                className="px-4 py-3.5 text-sm font-bold text-stone-800 dark:text-stone-200 hover:text-[#b87d5b] dark:hover:text-[#d49977] transition-colors"
+              >
+                How it Works
+              </a>
+            </div>
+
+            {/* Stats Row */}
+            <div className="pt-6 border-t border-[#f0eae3] dark:border-stone-800 flex items-center gap-8 sm:gap-12">
+              <div>
+                <p className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100">
+                  {slide.stat1Value}
                 </p>
-
-                {/* Buttons (Matching the reference style) */}
-                <div className="flex items-center gap-4 pt-2">
-                  <Link
-                    href="/books"
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm bg-[#c8a88e] hover:bg-[#b89375] text-white shadow-sm transition-all hover:scale-102 active:scale-98"
-                  >
-                    Start Browsing
-                  </Link>
-
-                  <a
-                    href="#how-it-works"
-                    className="px-4 py-3.5 text-sm font-bold text-stone-800 dark:text-stone-200 hover:text-[#b87d5b] dark:hover:text-[#d49977] transition-colors"
-                  >
-                    How it Works
-                  </a>
-                </div>
-
-                {/* Stats Row (Matching the reference numbers) */}
-                <div className="pt-6 border-t border-[#f0eae3] dark:border-stone-800 flex items-center gap-8 sm:gap-12">
-                  <div>
-                    <p className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100">
-                      {slide.stat1Value}
-                    </p>
-                    <p className="text-xs text-stone-400 font-medium mt-0.5">
-                      {slide.stat1Label}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100">
-                      {slide.stat2Value}
-                    </p>
-                    <p className="text-xs text-stone-400 font-medium mt-0.5">
-                      {slide.stat2Label}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100">
-                      {slide.stat3Value}
-                    </p>
-                    <p className="text-xs text-stone-400 font-medium mt-0.5">
-                      {slide.stat3Label}
-                    </p>
-                  </div>
-                </div>
+                <p className="text-xs text-stone-400 font-medium mt-0.5">
+                  {slide.stat1Label}
+                </p>
               </div>
-
-              {/* Right Column: Rounded Photo */}
-              <div className="lg:col-span-6 flex justify-center">
-                <div className="relative w-full h-[320px] sm:h-[400px] lg:h-[440px] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-lg shadow-stone-900/5">
-                  <img
-                    src={slide.image}
-                    alt={slide.title}
-                    className="w-full h-full object-cover object-center"
-                  />
-                </div>
+              <div>
+                <p className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100">
+                  {slide.stat2Value}
+                </p>
+                <p className="text-xs text-stone-400 font-medium mt-0.5">
+                  {slide.stat2Label}
+                </p>
+              </div>
+              <div>
+                <p className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100">
+                  {slide.stat3Value}
+                </p>
+                <p className="text-xs text-stone-400 font-medium mt-0.5">
+                  {slide.stat3Label}
+                </p>
               </div>
             </div>
-          </SwiperSlide>
+          </div>
+
+          {/* Right Column: Rounded Photo */}
+          <div className="lg:col-span-6 flex justify-center">
+            <div className="relative w-full h-[320px] sm:h-[400px] lg:h-[440px] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-lg shadow-stone-900/5">
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Pagination Dots */}
+      <div className="flex items-center justify-center gap-2 pt-4">
+        {slides.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrent(idx)}
+            aria-label={`Go to slide ${idx + 1}`}
+            className={`h-2.5 rounded-full transition-all duration-300 ${
+              idx === current
+                ? 'w-8 bg-[#c8a88e]'
+                : 'w-2.5 bg-stone-300 dark:bg-stone-700 hover:bg-stone-400'
+            }`}
+          />
         ))}
-      </Swiper>
+      </div>
     </div>
   );
 }
