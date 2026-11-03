@@ -11,6 +11,28 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Connect to MongoDB (cached connection for local Node and Vercel serverless)
+let isConnected = false;
+const connectDB = async () => {
+  if (isConnected || (mongoose.connection && mongoose.connection.readyState >= 1)) {
+    return;
+  }
+  try {
+    if (!MONGODB_URI) {
+      console.warn('MONGODB_URI environment variable is missing.');
+      throw new Error('MONGODB_URI environment variable is missing.');
+    }
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    isConnected = true;
+    console.log('Connected to MongoDB successfully.');
+  } catch (err) {
+    console.error('MongoDB connection error:', err.message);
+    throw err;
+  }
+};
+
 // Middleware
 app.use(
   cors({
@@ -28,12 +50,31 @@ app.use((req, res, next) => {
   next();
 });
 
+// Ensure database connection for all requests BEFORE hitting any routes
+app.use(async (req, res, next) => {
+  // Allow root health check to respond even if DB is connecting
+  if (req.path === '/') {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed. Please ensure MONGODB_URI is configured.',
+      error: err.message,
+    });
+  }
+});
+
 // Root API Health route
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
     project: 'BookNook – A Small Online Library API',
     version: '1.0.0',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     endpoints: {
       books: '/books',
       borrows: '/borrows',
@@ -61,39 +102,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Connect to MongoDB (handles both local Node and Vercel serverless lifecycle)
-let isConnected = false;
-const connectDB = async () => {
-  if (isConnected || (mongoose.connection && mongoose.connection.readyState >= 1)) {
-    return;
-  }
-  try {
-    if (!MONGODB_URI) {
-      console.warn('MONGODB_URI environment variable is missing.');
-      return;
-    }
-    await mongoose.connect(MONGODB_URI);
-    isConnected = true;
-    console.log('Connected to MongoDB successfully.');
-  } catch (err) {
-    console.error('MongoDB connection error:', err.message);
-  }
-};
-
-// Ensure database connection for all requests in serverless environment
-app.use(async (req, res, next) => {
-  await connectDB();
-  next();
-});
-
 // Start local server if not running in serverless environment
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`BookNook Express server running on port ${PORT}`);
     });
+  }).catch((err) => {
+    console.error('Failed to connect to DB on start:', err);
   });
 }
 
 module.exports = app;
-
